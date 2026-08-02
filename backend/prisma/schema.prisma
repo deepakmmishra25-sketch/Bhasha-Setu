@@ -1,0 +1,17 @@
+// BhashaSetu AI — Prisma Schema
+// Models are defined milestone by milestone.
+// Milestone 5 adds: User, Business, Chat, Document, Scheme, History
+
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Placeholder to validate schema syntax ─────────────────────────────
+// Full models added in Milestone 5

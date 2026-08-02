@@ -1,49 +1,57 @@
-# See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
-
-# compiled output
-dist
-tmp
-out-tsc
+# ─── Node / Next.js ───────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+build/
 *.tsbuildinfo
-.expo
-.expo-shared
+.npm
+.pnpm-store
 
-# dependencies
-node_modules
+# ─── Python ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+.env
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+*.log
 
-# IDEs and editors
-/.idea
-.project
-.classpath
-.c9/
-*.launch
-.settings/
-*.sublime-workspace
+# ─── Environment ──────────────────────────────────────────────────────
+.env
+.env.local
+.env.production
+.env.development.local
+.env.test.local
+.env.production.local
+backend/.env
+frontend/.env.local
 
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+# ─── Docker ───────────────────────────────────────────────────────────
+docker/ssl/
 
-# misc
-/.sass-cache
-/connect.lock
-/coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
-
-# System Files
+# ─── Misc ─────────────────────────────────────────────────────────────
 .DS_Store
-Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/
+*.orig
+backend/logs/*.log
 
-.cursor/rules/nx-rules.mdc
-.github/instructions/nx.instructions.md
+# ─── Prisma ───────────────────────────────────────────────────────────
+backend/prisma/migrations/
 
-# Replit
-.cache/
-.local/
+# NOTE: Do NOT ignore Replit config files
