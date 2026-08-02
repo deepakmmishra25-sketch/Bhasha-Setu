@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "BhashaSetu AI"
+description = "BhashaSetu AI is a multilingual learning platform for rural entrepreneurs in India. It offers structured lessons on business, government schemes, digital marketing, and financial literacy; AI-powered chat mentorship (in Hindi, English, and regional languages); video tutorials; quizzes; and progress tracking — all designed for first-generation entrepreneurs with limited formal education."
+version = "1.0.0"
+id = "artifacts/bhashasetu"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25517
+
+[services.development]
+run = "pnpm --filter @workspace/bhashasetu run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bhashasetu", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/bhashasetu/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25517"
+BASE_PATH = "/"

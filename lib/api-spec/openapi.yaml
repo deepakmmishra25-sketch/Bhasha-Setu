@@ -3,20 +3,35 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: BhashaSetu AI - Multilingual learning platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: lessons
+    description: Learning lessons and categories
+  - name: progress
+    description: User learning progress
+  - name: chat
+    description: AI chatbot
+  - name: schemes
+    description: Government schemes
+  - name: videos
+    description: Video lessons
+  - name: quiz
+    description: Quizzes and assessments
+  - name: bookmarks
+    description: Saved bookmarks
+  - name: dashboard
+    description: Dashboard summaries
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +39,419 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /categories:
+    get:
+      operationId: getCategories
+      tags: [lessons]
+      summary: List all learning categories
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Category"
+
+  /lessons:
+    get:
+      operationId: getLessons
+      tags: [lessons]
+      summary: List lessons with optional filters
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: level
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lesson"
+
+  /lessons/recommended:
+    get:
+      operationId: getRecommendedLessons
+      tags: [lessons]
+      summary: Get recommended lessons for current user
+      responses:
+        "200":
+          description: Recommended lessons
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lesson"
+
+  /lessons/{id}:
+    get:
+      operationId: getLesson
+      tags: [lessons]
+      summary: Get a single lesson
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Lesson detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LessonDetail"
+        "404":
+          description: Not found
+
+  /progress:
+    get:
+      operationId: getProgress
+      tags: [progress]
+      summary: Get user learning progress list
+      responses:
+        "200":
+          description: Progress entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Progress"
+    post:
+      operationId: markProgress
+      tags: [progress]
+      summary: Mark a lesson as completed
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProgressInput"
+      responses:
+        "201":
+          description: Progress marked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Progress"
+
+  /progress/stats:
+    get:
+      operationId: getProgressStats
+      tags: [progress]
+      summary: Get overall progress statistics
+      responses:
+        "200":
+          description: Progress stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProgressStats"
+
+  /chat/history:
+    get:
+      operationId: getChatHistory
+      tags: [chat]
+      summary: Get chat message history
+      responses:
+        "200":
+          description: Chat messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+
+  /chat/messages:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a message to AI mentor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatInput"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+
+  /schemes:
+    get:
+      operationId: getSchemes
+      tags: [schemes]
+      summary: List government schemes
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of schemes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scheme"
+
+  /schemes/{id}:
+    get:
+      operationId: getScheme
+      tags: [schemes]
+      summary: Get a single government scheme
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Scheme detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scheme"
+        "404":
+          description: Not found
+
+  /videos:
+    get:
+      operationId: getVideos
+      tags: [videos]
+      summary: List video lessons
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: language
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of videos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Video"
+
+  /videos/{id}/action:
+    post:
+      operationId: videoAction
+      tags: [videos]
+      summary: Save or mark a video as watched
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoActionInput"
+      responses:
+        "200":
+          description: Action recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+
+  /quiz/questions:
+    get:
+      operationId: getQuizQuestions
+      tags: [quiz]
+      summary: Get quiz questions for a category
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: lessonId
+          in: query
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Quiz questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizQuestion"
+
+  /quiz/submit:
+    post:
+      operationId: submitQuiz
+      tags: [quiz]
+      summary: Submit quiz answers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuizSubmitInput"
+      responses:
+        "200":
+          description: Quiz result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizResult"
+
+  /quiz/results:
+    get:
+      operationId: getQuizResults
+      tags: [quiz]
+      summary: Get user quiz history
+      responses:
+        "200":
+          description: Quiz results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/QuizResult"
+
+  /bookmarks:
+    get:
+      operationId: getBookmarks
+      tags: [bookmarks]
+      summary: Get user bookmarks
+      responses:
+        "200":
+          description: Bookmarks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Bookmark"
+    post:
+      operationId: toggleBookmark
+      tags: [bookmarks]
+      summary: Add or remove a bookmark
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookmarkInput"
+      responses:
+        "201":
+          description: Bookmark toggled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bookmark"
+
+  /bookmarks/{id}:
+    delete:
+      operationId: deleteBookmark
+      tags: [bookmarks]
+      summary: Delete a bookmark
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: number
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary for current user
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [dashboard]
+      summary: Get user profile
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+    patch:
+      operationId: updateProfile
+      tags: [dashboard]
+      summary: Update user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProfileUpdate"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +459,436 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Category:
+      type: object
+      properties:
+        id:
+          type: number
+        slug:
+          type: string
+        name:
+          type: string
+        nameHindi:
+          type: ["string", "null"]
+        description:
+          type: string
+        icon:
+          type: string
+        color:
+          type: string
+        lessonCount:
+          type: number
+      required: [id, slug, name, description, icon, color, lessonCount]
+
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: number
+        categorySlug:
+          type: string
+        categoryName:
+          type: ["string", "null"]
+        title:
+          type: string
+        titleHindi:
+          type: ["string", "null"]
+        description:
+          type: string
+        level:
+          type: string
+        durationMinutes:
+          type: number
+        language:
+          type: string
+        thumbnailUrl:
+          type: ["string", "null"]
+        completed:
+          type: boolean
+        bookmarked:
+          type: boolean
+      required: [id, categorySlug, title, description, level, durationMinutes, language, completed, bookmarked]
+
+    LessonDetail:
+      type: object
+      properties:
+        id:
+          type: number
+        categorySlug:
+          type: string
+        categoryName:
+          type: ["string", "null"]
+        title:
+          type: string
+        titleHindi:
+          type: ["string", "null"]
+        description:
+          type: string
+        content:
+          type: string
+        level:
+          type: string
+        durationMinutes:
+          type: number
+        language:
+          type: string
+        thumbnailUrl:
+          type: ["string", "null"]
+        completed:
+          type: boolean
+        bookmarked:
+          type: boolean
+        keyPoints:
+          type: array
+          items:
+            type: string
+        prevLessonId:
+          type: ["number", "null"]
+        nextLessonId:
+          type: ["number", "null"]
+      required: [id, categorySlug, title, description, content, level, durationMinutes, language, completed, bookmarked, keyPoints]
+
+    Progress:
+      type: object
+      properties:
+        id:
+          type: number
+        lessonId:
+          type: number
+        lessonTitle:
+          type: ["string", "null"]
+        categorySlug:
+          type: ["string", "null"]
+        completed:
+          type: boolean
+        score:
+          type: ["number", "null"]
+        completedAt:
+          type: ["string", "null"]
+      required: [id, lessonId, completed]
+
+    ProgressStats:
+      type: object
+      properties:
+        totalCompleted:
+          type: number
+        totalLessons:
+          type: number
+        percentComplete:
+          type: number
+        streakDays:
+          type: number
+        byCategory:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryProgress"
+        recentlyCompleted:
+          type: array
+          items:
+            $ref: "#/components/schemas/Progress"
+      required: [totalCompleted, totalLessons, percentComplete, streakDays, byCategory, recentlyCompleted]
+
+    CategoryProgress:
+      type: object
+      properties:
+        categorySlug:
+          type: string
+        categoryName:
+          type: string
+        completed:
+          type: number
+        total:
+          type: number
+        percent:
+          type: number
+      required: [categorySlug, categoryName, completed, total, percent]
+
+    ProgressInput:
+      type: object
+      properties:
+        lessonId:
+          type: number
+        completed:
+          type: boolean
+        score:
+          type: number
+      required: [lessonId, completed]
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: number
+        role:
+          type: string
+        content:
+          type: string
+        language:
+          type: string
+        createdAt:
+          type: string
+      required: [id, role, content, language, createdAt]
+
+    ChatInput:
+      type: object
+      properties:
+        message:
+          type: string
+        language:
+          type: string
+      required: [message]
+
+    Scheme:
+      type: object
+      properties:
+        id:
+          type: number
+        name:
+          type: string
+        nameHindi:
+          type: ["string", "null"]
+        category:
+          type: string
+        description:
+          type: string
+        eligibility:
+          type: string
+        benefits:
+          type: string
+        documents:
+          type: array
+          items:
+            type: string
+        applicationProcess:
+          type: string
+        ministry:
+          type: string
+        websiteUrl:
+          type: ["string", "null"]
+      required: [id, name, category, description, eligibility, benefits, documents, applicationProcess, ministry]
+
+    Video:
+      type: object
+      properties:
+        id:
+          type: number
+        title:
+          type: string
+        description:
+          type: string
+        youtubeId:
+          type: string
+        category:
+          type: string
+        durationSeconds:
+          type: number
+        language:
+          type: string
+        thumbnailUrl:
+          type: string
+        saved:
+          type: boolean
+        completed:
+          type: boolean
+      required: [id, title, description, youtubeId, category, durationSeconds, language, thumbnailUrl, saved, completed]
+
+    VideoActionInput:
+      type: object
+      properties:
+        action:
+          type: string
+      required: [action]
+
+    QuizQuestion:
+      type: object
+      properties:
+        id:
+          type: number
+        lessonId:
+          type: ["number", "null"]
+        category:
+          type: string
+        question:
+          type: string
+        questionHindi:
+          type: ["string", "null"]
+        options:
+          type: array
+          items:
+            type: string
+        correctIndex:
+          type: number
+        explanation:
+          type: ["string", "null"]
+      required: [id, category, question, options, correctIndex]
+
+    QuizAnswer:
+      type: object
+      properties:
+        questionId:
+          type: number
+        selectedIndex:
+          type: number
+      required: [questionId, selectedIndex]
+
+    QuizAnswerResult:
+      type: object
+      properties:
+        questionId:
+          type: number
+        question:
+          type: string
+        selectedIndex:
+          type: number
+        correctIndex:
+          type: number
+        correct:
+          type: boolean
+        explanation:
+          type: ["string", "null"]
+      required: [questionId, question, selectedIndex, correctIndex, correct]
+
+    QuizSubmitInput:
+      type: object
+      properties:
+        category:
+          type: string
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizAnswer"
+      required: [category, answers]
+
+    QuizResult:
+      type: object
+      properties:
+        id:
+          type: number
+        category:
+          type: string
+        score:
+          type: number
+        totalQuestions:
+          type: number
+        percentScore:
+          type: number
+        passed:
+          type: boolean
+        completedAt:
+          type: string
+        answers:
+          type: array
+          items:
+            $ref: "#/components/schemas/QuizAnswerResult"
+      required: [id, category, score, totalQuestions, percentScore, passed, completedAt, answers]
+
+    Bookmark:
+      type: object
+      properties:
+        id:
+          type: number
+        type:
+          type: string
+        refId:
+          type: number
+        title:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+      required: [id, type, refId, title, description, createdAt]
+
+    BookmarkInput:
+      type: object
+      properties:
+        type:
+          type: string
+        refId:
+          type: number
+        title:
+          type: string
+        description:
+          type: string
+      required: [type, refId, title, description]
+
+    DeleteResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    DashboardSummary:
+      type: object
+      properties:
+        userName:
+          type: string
+        language:
+          type: string
+        totalCompleted:
+          type: number
+        streakDays:
+          type: number
+        percentComplete:
+          type: number
+        continueLesson:
+          $ref: "#/components/schemas/Lesson"
+        recentActivity:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              title:
+                type: string
+              description:
+                type: string
+              timestamp:
+                type: string
+            required: [type, title, description, timestamp]
+        categoryProgress:
+          type: array
+          items:
+            $ref: "#/components/schemas/CategoryProgress"
+      required: [userName, language, totalCompleted, streakDays, percentComplete, recentActivity, categoryProgress]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        language:
+          type: string
+        state:
+          type: ["string", "null"]
+        occupation:
+          type: ["string", "null"]
+        avatarUrl:
+          type: ["string", "null"]
+        joinedAt:
+          type: string
+        completedLessons:
+          type: number
+        certificates:
+          type: number
+      required: [id, name, email, language, joinedAt, completedLessons, certificates]
+
+    ProfileUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        language:
+          type: string
+        state:
+          type: string
+        occupation:
+          type: string

@@ -13,19 +13,9 @@ export const metadata: Metadata = {
   description:
     "BhashaSetu AI helps rural entrepreneurs, farmers, MSMEs, students, and small businesses grow using AI-powered mentorship in 13 Indian languages.",
   keywords: [
-    "BhashaSetu",
-    "multilingual AI",
-    "India",
-    "rural entrepreneurs",
-    "MSME",
-    "Hindi AI",
-    "business mentor",
+    "BhashaSetu", "multilingual AI", "India", "rural entrepreneurs",
+    "MSME", "Hindi AI", "business mentor", "government schemes",
   ],
-  openGraph: {
-    title: "BhashaSetu AI",
-    description: "India's Multilingual AI Platform for Entrepreneurs",
-    type: "website",
-  },
 };
 
 export default function RootLayout({
