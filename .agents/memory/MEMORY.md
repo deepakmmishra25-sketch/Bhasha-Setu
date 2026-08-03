@@ -1,0 +1,1 @@
+- [Docker build contexts](docker-build-contexts.md) — build each service image from its own directory; its Dockerfile assumes that context.
