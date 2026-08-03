@@ -4,12 +4,14 @@ from fastapi import APIRouter
 
 from app.api.v1.endpoints import (
     admin,
+    analytics,
     auth,
     chat,
     dashboard,
     lessons,
     notifications,
     ocr,
+    payments,
     schemes,
     speech,
     translate,
@@ -29,3 +31,5 @@ api_router.include_router(ocr.router)
 api_router.include_router(speech.router)
 api_router.include_router(notifications.router)
 api_router.include_router(admin.router)
+api_router.include_router(analytics.router)
+api_router.include_router(payments.router)

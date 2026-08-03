@@ -3,13 +3,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Plus, Loader2, Bot, User, Mic } from "lucide-react";
+import { Send, Plus, Loader2, Bot, User, Mic, MicOff, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuthStore } from "@/store/auth.store";
 import { useAppStore } from "@/store/app.store";
+import { useSpeech } from "@/hooks/useSpeech";
 import apiClient from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,18 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [speakingId, setSpeakingId] = useState<number | null>(null);
+
+  const {
+    isListening, isSpeaking, transcript,
+    isSTTSupported, isTTSSupported,
+    startListening, stopListening, speak, stopSpeaking,
+  } = useSpeech();
+
+  // Fill input from voice transcript
+  useEffect(() => {
+    if (transcript) setInput(transcript);
+  }, [transcript]);
 
   const { data: sessions = [] } = useQuery<Session[]>({
     queryKey: ["chat-sessions"],
@@ -50,16 +63,35 @@ export default function ChatPage() {
     setMessages(res.data);
   };
 
-  const newChat = () => { setSessionId(null); setMessages([]); };
+  const newChat = () => { setSessionId(null); setMessages([]); stopSpeaking(); };
 
   const handleSend = () => {
     const msg = input.trim();
     if (!msg || sendMutation.isPending) return;
     setInput("");
-    // Optimistic user message
     setMessages(prev => [...prev, { id: Date.now(), role: "user", content: msg }]);
     sendMutation.mutate(msg);
   };
+
+  const handleMic = () => {
+    if (isListening) stopListening();
+    else startListening(language);
+  };
+
+  const handleSpeak = (msg: Message) => {
+    if (speakingId === msg.id) {
+      stopSpeaking();
+      setSpeakingId(null);
+    } else {
+      setSpeakingId(msg.id);
+      speak(msg.content, language);
+    }
+  };
+
+  // Reset speakingId when TTS finishes
+  useEffect(() => {
+    if (!isSpeaking) setSpeakingId(null);
+  }, [isSpeaking]);
 
   return (
     <div className="flex h-[calc(100vh-8rem)] gap-4">
@@ -93,10 +125,15 @@ export default function ChatPage() {
           <div className="w-8 h-8 bg-gradient-to-br from-saffron-500 to-orange-600 rounded-full flex items-center justify-center">
             <Bot className="w-4 h-4 text-white" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold">BhashaSetu AI Mentor</p>
             <p className="text-xs text-muted-foreground">Responding in {language}</p>
           </div>
+          {isTTSSupported && isSpeaking && (
+            <Button size="icon" variant="ghost" onClick={stopSpeaking} className="w-7 h-7">
+              <VolumeX className="w-4 h-4 text-orange-500" />
+            </Button>
+          )}
         </div>
 
         {/* Messages */}
@@ -117,10 +154,15 @@ export default function ChatPage() {
                 "My crop prices are low — what should I do?",
                 "How to start a small business with ₹10,000?",
               ].map(s => (
-                <button key={s} onClick={() => { setInput(s); }} className="block mt-2 text-xs text-primary hover:underline">
+                <button key={s} onClick={() => setInput(s)} className="block mt-2 text-xs text-primary hover:underline">
                   &ldquo;{s}&rdquo;
                 </button>
               ))}
+              {isSTTSupported && (
+                <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+                  <Mic className="w-3 h-3" /> You can also use the mic to speak your question
+                </p>
+              )}
             </div>
           )}
 
@@ -137,13 +179,26 @@ export default function ChatPage() {
                     <Bot className="w-3.5 h-3.5 text-white" />
                   </div>
                 )}
-                <div className={cn(
-                  "max-w-[75%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  m.role === "user"
-                    ? "bg-primary text-white rounded-tr-sm"
-                    : "bg-gray-100 text-gray-800 rounded-tl-sm"
-                )}>
-                  {m.content}
+                <div className="flex flex-col gap-1 max-w-[75%]">
+                  <div className={cn(
+                    "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                    m.role === "user"
+                      ? "bg-primary text-white rounded-tr-sm"
+                      : "bg-gray-100 text-gray-800 rounded-tl-sm"
+                  )}>
+                    {m.content}
+                  </div>
+                  {m.role === "assistant" && isTTSSupported && (
+                    <button
+                      onClick={() => handleSpeak(m)}
+                      className="self-start text-xs text-muted-foreground hover:text-primary flex items-center gap-1 ml-1"
+                    >
+                      {speakingId === m.id
+                        ? <><VolumeX className="w-3 h-3" /> Stop</>
+                        : <><Volume2 className="w-3 h-3" /> Listen</>
+                      }
+                    </button>
+                  )}
                 </div>
                 {m.role === "user" && (
                   <div className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center shrink-0 mt-0.5">
@@ -177,9 +232,17 @@ export default function ChatPage() {
             className="flex-1"
             disabled={sendMutation.isPending}
           />
-          <Button size="icon" variant="ghost" className="shrink-0">
-            <Mic className="w-4 h-4 text-gray-400" />
-          </Button>
+          {isSTTSupported && (
+            <Button
+              size="icon"
+              variant={isListening ? "default" : "ghost"}
+              onClick={handleMic}
+              className={cn("shrink-0", isListening && "bg-red-500 hover:bg-red-600 text-white")}
+              title={isListening ? "Stop recording" : "Speak your question"}
+            >
+              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-gray-400" />}
+            </Button>
+          )}
           <Button size="icon" onClick={handleSend} disabled={!input.trim() || sendMutation.isPending} className="shrink-0">
             <Send className="w-4 h-4" />
           </Button>

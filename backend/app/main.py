@@ -16,7 +16,7 @@ from loguru import logger
 from app.core.config import settings, CORS_ORIGIN_REGEX
 from app.core.logging import setup_logging
 from app.db.database import check_db_connection
-from app.db.init_db import create_tables, seed_categories, seed_schemes
+from app.db.init_db import create_tables, seed_categories, seed_lessons, seed_schemes
 
 setup_logging()
 
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
         logger.info("✅ Database connected")
         await create_tables()
         await seed_categories()
+        await seed_lessons()
         await seed_schemes()
     else:
         logger.warning("⚠️  Database unreachable")

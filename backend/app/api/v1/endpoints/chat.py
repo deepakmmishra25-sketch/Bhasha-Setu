@@ -2,12 +2,13 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import get_current_active_user
 from app.core.config import settings
 from app.db.database import get_db
+from app.models.analytics import UsageEvent
 from app.models.chat import ChatMessage, ChatSession
 from app.models.user import User
 
@@ -76,7 +77,14 @@ async def send_message(
         )
         session = result.scalar_one_or_none()
 
+    is_first_chat = False
     if not session:
+        # Check if this is the user's very first chat session
+        count_q = await db.execute(
+            select(func.count()).where(ChatSession.user_id == current_user.id)
+        )
+        is_first_chat = (count_q.scalar() or 0) == 0
+
         session = ChatSession(
             user_id=current_user.id,
             language=data.language,
@@ -120,6 +128,21 @@ async def send_message(
 
     ai_msg = ChatMessage(session_id=session.id, role="assistant", content=ai_text, language=data.language)
     db.add(ai_msg)
+
+    # Track analytics event
+    event = UsageEvent(
+        user_id=current_user.id,
+        event_type="message_sent",
+        feature="chat",
+        language=data.language,
+    )
+    db.add(event)
+
+    # First-chat welcome notification
+    if is_first_chat:
+        from app.services.notification_service import notify_first_chat
+        await notify_first_chat(db, current_user.id, current_user.language or "English")
+
     await db.commit()
 
     return {
@@ -135,7 +158,6 @@ async def get_messages(
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Verify ownership
     result = await db.execute(
         select(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == current_user.id)
     )

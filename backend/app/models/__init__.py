@@ -4,6 +4,8 @@ from app.models.user import User
 from app.models.chat import ChatSession, ChatMessage
 from app.models.lesson import Category, Lesson, LessonProgress
 from app.models.scheme import Scheme, Notification
+from app.models.analytics import UsageEvent
+from app.models.payment import SubscriptionPlan, UserSubscription
 
 __all__ = [
     "User",
@@ -14,4 +16,7 @@ __all__ = [
     "LessonProgress",
     "Scheme",
     "Notification",
+    "UsageEvent",
+    "SubscriptionPlan",
+    "UserSubscription",
 ]
