@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Required for Docker multi-stage production build (copies only what's needed)
+  output: process.env.NODE_ENV === "production" ? "standalone" : undefined,
   // Allow all hosts — required for Replit's proxied preview iframe
   allowedDevOrigins: ["*"],
   experimental: {
