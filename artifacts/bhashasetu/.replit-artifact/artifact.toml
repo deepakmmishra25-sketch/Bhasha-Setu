@@ -12,7 +12,7 @@ paths = [ "/" ]
 localPort = 25517
 
 [services.development]
-run = "pnpm --filter @workspace/bhashasetu run dev"
+run = "cd /home/runner/workspace/frontend && ./node_modules/.bin/next dev -p 25517"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/bhashasetu", "run", "build" ]
