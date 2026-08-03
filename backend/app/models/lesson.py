@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.database import Base
 
@@ -24,6 +24,10 @@ class Category(Base):
 
 class Lesson(Base):
     __tablename__ = "lessons"
+    __table_args__ = (
+        # Composite index: the list_lessons query filters on both columns together
+        Index("ix_lessons_published_category", "is_published", "category_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     category_id: Mapped[int] = mapped_column(Integer, ForeignKey("categories.id"), nullable=False, index=True)
@@ -43,6 +47,10 @@ class Lesson(Base):
 
 class LessonProgress(Base):
     __tablename__ = "lesson_progress"
+    __table_args__ = (
+        # Composite index: list_lessons fetches progress IN (lesson_ids) for a given user
+        Index("ix_lesson_progress_user_lesson", "user_id", "lesson_id"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

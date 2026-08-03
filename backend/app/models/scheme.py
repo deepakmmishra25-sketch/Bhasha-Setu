@@ -1,14 +1,17 @@
 """Government scheme models."""
 
-import uuid
 from datetime import datetime
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 from app.db.database import Base
 
 
 class Scheme(Base):
     __tablename__ = "schemes"
+    __table_args__ = (
+        # Composite index: list_schemes filters on is_active + optional category together
+        Index("ix_schemes_active_category", "is_active", "category"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -28,6 +31,10 @@ class Scheme(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
+    __table_args__ = (
+        # Composite index: notification queries always filter user_id + is_read together
+        Index("ix_notifications_user_read", "user_id", "is_read"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

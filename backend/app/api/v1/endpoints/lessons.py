@@ -1,18 +1,37 @@
 """Lesson and category endpoints — with analytics + notification triggers + caching."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import get_current_active_user
 from app.core.cache import cache
-from app.db.database import get_db
+from app.db.database import AsyncSessionLocal, get_db
 from app.models.analytics import UsageEvent
 from app.models.lesson import Category, Lesson, LessonProgress
 from app.models.user import User
 
 router = APIRouter(prefix="/lessons", tags=["lessons"])
 
+
+# ── Background task helpers ───────────────────────────────────────────────────
+
+async def _record_lesson_event(user_id: str, event_type: str, language: str) -> None:
+    """Record a lesson analytics event in a dedicated session (non-blocking)."""
+    async with AsyncSessionLocal() as session:
+        try:
+            session.add(UsageEvent(
+                user_id=user_id,
+                event_type=event_type,
+                feature="lessons",
+                language=language,
+            ))
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.get("/categories")
 async def list_categories(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_active_user)):
@@ -72,6 +91,7 @@ async def list_lessons(
 @router.get("/{lesson_id}")
 async def get_lesson(
     lesson_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -89,10 +109,8 @@ async def get_lesson(
     )
     progress = progress_result.scalar_one_or_none()
 
-    # Track view event
-    event = UsageEvent(user_id=current_user.id, event_type="lesson_view", feature="lessons", language=current_user.language)
-    db.add(event)
-    await db.commit()
+    # Analytics event recorded after response is returned — non-blocking
+    background_tasks.add_task(_record_lesson_event, current_user.id, "lesson_view", current_user.language or "English")
 
     return {
         "id": lesson.id,
@@ -111,6 +129,7 @@ async def get_lesson(
 @router.post("/{lesson_id}/complete")
 async def complete_lesson(
     lesson_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -118,12 +137,11 @@ async def complete_lesson(
     from fastapi import HTTPException
 
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id, Lesson.is_published == True))  # noqa
-    if not result.scalar_one_or_none():
+    lesson_obj = result.scalar_one_or_none()
+    if not lesson_obj:
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # Update the existing progress row when present. The current schema does
-    # not require a composite unique constraint, so a PostgreSQL ON CONFLICT
-    # upsert would fail against existing databases.
+    # Upsert progress row
     progress_result = await db.execute(
         select(LessonProgress).where(
             LessonProgress.user_id == current_user.id,
@@ -145,26 +163,15 @@ async def complete_lesson(
             )
         )
 
-    # Track event
-    event = UsageEvent(user_id=current_user.id, event_type="lesson_complete", feature="lessons", language=current_user.language)
-    db.add(event)
-
     # First completion notification
     from app.services.notification_service import notify_lesson_complete
-    count_q = await db.execute(
-        select(LessonProgress).where(
-            LessonProgress.user_id == current_user.id,
-            LessonProgress.completed == True,  # noqa
-        )
-    )
-    completed_count = len(count_q.scalars().all())
-    # Fetch lesson title for the notification
-    lesson_obj = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    lesson_row = lesson_obj.scalar_one_or_none()
-    lesson_title = lesson_row.title if lesson_row else f"Lesson #{lesson_id}"
-    await notify_lesson_complete(db, current_user.id, lesson_title, current_user.language or "English")
+    await notify_lesson_complete(db, current_user.id, lesson_obj.title, current_user.language or "English")
 
     await db.commit()
+
+    # Analytics event recorded after response is committed — non-blocking
+    background_tasks.add_task(_record_lesson_event, current_user.id, "lesson_complete", current_user.language or "English")
+
     return {"completed": True, "lessonId": lesson_id}
 
 

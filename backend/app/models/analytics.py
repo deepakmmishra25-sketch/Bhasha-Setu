@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, Text
+from sqlalchemy import DateTime, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -10,6 +10,10 @@ from app.db.database import Base
 
 class UsageEvent(Base):
     __tablename__ = "usage_events"
+    __table_args__ = (
+        # Composite index: analytics_overview queries filter created_at then group by feature
+        Index("ix_usage_events_created_feature", "created_at", "feature"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)

@@ -1,13 +1,13 @@
 """AI Chat endpoints — Gemini-powered multilingual conversation."""
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import get_current_active_user
 from app.core.config import settings
-from app.db.database import get_db
+from app.db.database import AsyncSessionLocal, get_db
 from app.models.analytics import UsageEvent
 from app.models.chat import ChatMessage, ChatSession
 from app.models.user import User
@@ -45,6 +45,25 @@ Key guidelines:
 Topics you can help with: business planning, farming advice, government schemes, digital payments, marketing, finance, legal basics, skill development."""
 
 
+# ── Background task helpers ───────────────────────────────────────────────────
+
+async def _record_chat_event(user_id: str, language: str) -> None:
+    """Record a chat analytics event in a dedicated session (non-blocking)."""
+    async with AsyncSessionLocal() as session:
+        try:
+            session.add(UsageEvent(
+                user_id=user_id,
+                event_type="message_sent",
+                feature="chat",
+                language=language,
+            ))
+            await session.commit()
+        except Exception:
+            await session.rollback()
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
 @router.get("/sessions")
 async def list_sessions(
     current_user: User = Depends(get_current_active_user),
@@ -63,6 +82,7 @@ async def list_sessions(
 @router.post("/send")
 async def send_message(
     data: ChatInput,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -129,21 +149,15 @@ async def send_message(
     ai_msg = ChatMessage(session_id=session.id, role="assistant", content=ai_text, language=data.language)
     db.add(ai_msg)
 
-    # Track analytics event
-    event = UsageEvent(
-        user_id=current_user.id,
-        event_type="message_sent",
-        feature="chat",
-        language=data.language,
-    )
-    db.add(event)
-
     # First-chat welcome notification
     if is_first_chat:
         from app.services.notification_service import notify_first_chat
         await notify_first_chat(db, current_user.id, current_user.language or "English")
 
     await db.commit()
+
+    # Analytics event recorded after response is committed — non-blocking
+    background_tasks.add_task(_record_chat_event, current_user.id, data.language)
 
     return {
         "sessionId": session.id,
