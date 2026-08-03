@@ -116,23 +116,34 @@ async def complete_lesson(
 ):
     from datetime import datetime, timezone
     from fastapi import HTTPException
-    from sqlalchemy.dialects.postgresql import insert as pg_insert
 
     result = await db.execute(select(Lesson).where(Lesson.id == lesson_id, Lesson.is_published == True))  # noqa
     if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    # Upsert progress record
-    stmt = pg_insert(LessonProgress).values(
-        user_id=current_user.id,
-        lesson_id=lesson_id,
-        completed=True,
-        completed_at=datetime.now(timezone.utc),
-    ).on_conflict_do_update(
-        index_elements=["user_id", "lesson_id"],
-        set_={"completed": True, "completed_at": datetime.now(timezone.utc)},
+    # Update the existing progress row when present. The current schema does
+    # not require a composite unique constraint, so a PostgreSQL ON CONFLICT
+    # upsert would fail against existing databases.
+    progress_result = await db.execute(
+        select(LessonProgress).where(
+            LessonProgress.user_id == current_user.id,
+            LessonProgress.lesson_id == lesson_id,
+        )
     )
-    await db.execute(stmt)
+    progress = progress_result.scalar_one_or_none()
+    completed_at = datetime.now(timezone.utc)
+    if progress:
+        progress.completed = True
+        progress.completed_at = completed_at
+    else:
+        db.add(
+            LessonProgress(
+                user_id=current_user.id,
+                lesson_id=lesson_id,
+                completed=True,
+                completed_at=completed_at,
+            )
+        )
 
     # Track event
     event = UsageEvent(user_id=current_user.id, event_type="lesson_complete", feature="lessons", language=current_user.language)

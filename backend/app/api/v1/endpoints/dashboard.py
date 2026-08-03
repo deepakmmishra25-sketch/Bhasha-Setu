@@ -91,6 +91,7 @@ async def get_summary(
         },
         "stats": {
             "completedLessons": completed_count,
+            "lessonsCompleted": completed_count,
             "totalLessons": total_lessons,
             "progressPercent": progress_pct,
             "chatSessions": chat_count,
