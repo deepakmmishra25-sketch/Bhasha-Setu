@@ -19,6 +19,29 @@ const LANG_CODES: Record<string, string> = {
   Assamese: "as-IN",
 };
 
+// Browser Speech Recognition API — webkit-prefixed in many browsers
+interface ISpeechRecognition extends EventTarget {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+type SpeechRecognitionCtor = new () => ISpeechRecognition;
+
+function getSpeechRecognitionCtor(): SpeechRecognitionCtor | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as Record<string, unknown>;
+  return (w["SpeechRecognition"] as SpeechRecognitionCtor | undefined) ??
+    (w["webkitSpeechRecognition"] as SpeechRecognitionCtor | undefined) ??
+    null;
+}
+
 interface UseSpeechReturn {
   isListening: boolean;
   isSpeaking: boolean;
@@ -35,11 +58,11 @@ export function useSpeech(): UseSpeechReturn {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<ISpeechRecognition | null>(null);
 
   const isSTTSupported =
     typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+    !!(getSpeechRecognitionCtor());
 
   const isTTSSupported =
     typeof window !== "undefined" && "speechSynthesis" in window;
@@ -54,13 +77,9 @@ export function useSpeech(): UseSpeechReturn {
 
   const startListening = useCallback(
     (language = "Hindi") => {
-      if (!isSTTSupported) return;
-      stopListening();
-
-      const SR =
-        (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).SpeechRecognition ||
-        (window as Window & { SpeechRecognition?: typeof SpeechRecognition; webkitSpeechRecognition?: typeof SpeechRecognition }).webkitSpeechRecognition;
+      const SR = getSpeechRecognitionCtor();
       if (!SR) return;
+      stopListening();
 
       const recognition = new SR();
       recognition.lang = LANG_CODES[language] ?? "hi-IN";
@@ -78,7 +97,7 @@ export function useSpeech(): UseSpeechReturn {
       recognitionRef.current = recognition;
       recognition.start();
     },
-    [isSTTSupported, stopListening]
+    [stopListening]
   );
 
   const stopSpeaking = useCallback(() => {
