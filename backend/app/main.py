@@ -1,6 +1,6 @@
 """
 BhashaSetu AI — FastAPI Application
-Milestone 2: Foundation — DB connectivity, health API, CORS, logging, env loading.
+Full API: Auth, Chat, Lessons, Schemes, OCR, Translation, Speech, Admin.
 """
 
 import time
@@ -16,48 +16,43 @@ from loguru import logger
 from app.core.config import settings, CORS_ORIGIN_REGEX
 from app.core.logging import setup_logging
 from app.db.database import check_db_connection
+from app.db.init_db import create_tables, seed_categories, seed_schemes
 
 setup_logging()
 
 
-# ─── Lifespan ──────────────────────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info(
-        f"🚀 Starting {settings.APP_NAME} v{settings.APP_VERSION} "
-        f"[{settings.ENVIRONMENT}]"
-    )
+    logger.info(f"🚀 {settings.APP_NAME} v{settings.APP_VERSION} [{settings.ENVIRONMENT}]")
     db_ok = await check_db_connection()
     if db_ok:
-        logger.info("✅ Database connection verified")
+        logger.info("✅ Database connected")
+        await create_tables()
+        await seed_categories()
+        await seed_schemes()
     else:
-        logger.warning("⚠️  Database unreachable — check DATABASE_URL")
+        logger.warning("⚠️  Database unreachable")
     yield
-    logger.info("🛑 Shutting down")
+    logger.info("🛑 Shutdown")
 
 
-# ─── App ───────────────────────────────────────────────────────────────────
 app = FastAPI(
     title=settings.APP_NAME,
-    description="India's Multilingual AI Platform for Rural Entrepreneurs",
+    description="India's Multilingual AI Platform",
     version=settings.APP_VERSION,
     lifespan=lifespan,
-    docs_url="/api/docs" if settings.ENVIRONMENT != "production" else None,
-    redoc_url="/api/redoc" if settings.ENVIRONMENT != "production" else None,
-    openapi_url="/api/openapi.json" if settings.ENVIRONMENT != "production" else None,
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 
-# ─── Request timing middleware ─────────────────────────────────────────────
 class RequestLoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start = time.perf_counter()
         response = await call_next(request)
-        duration_ms = (time.perf_counter() - start) * 1000
-        logger.info(
-            f"{request.method} {request.url.path} "
-            f"→ {response.status_code} ({duration_ms:.1f}ms)"
-        )
+        ms = (time.perf_counter() - start) * 1000
+        logger.info(f"{request.method} {request.url.path} → {response.status_code} ({ms:.1f}ms)")
         return response
 
 
@@ -73,18 +68,11 @@ app.add_middleware(
 )
 
 
-# ─── Health ────────────────────────────────────────────────────────────────
-@app.get("/api/healthz", tags=["health"], summary="Health check")
+@app.get("/api/healthz", tags=["health"])
 async def health_check():
     db_ok = await check_db_connection()
-    return {
-        "status": "ok" if db_ok else "degraded",
-        "version": settings.APP_VERSION,
-        "environment": settings.ENVIRONMENT,
-        "database": "connected" if db_ok else "unreachable",
-    }
+    return {"status": "ok" if db_ok else "degraded", "version": settings.APP_VERSION, "database": "connected" if db_ok else "unreachable"}
 
 
-# ─── API v1 Router (mounted per milestone) ────────────────────────────────
-# from app.api.v1.router import api_router
-# app.include_router(api_router, prefix="/api/v1")
+from app.api.v1.router import api_router
+app.include_router(api_router, prefix="/api/v1")
