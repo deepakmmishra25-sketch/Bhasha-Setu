@@ -89,7 +89,7 @@ export default function RegisterPage() {
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
             <Label>Your Language</Label>
-            <Select value={language} onValueChange={(v) => { setLanguage(v); setValue("language", v); }}>
+            <Select value={language} onValueChange={(v) => { setLanguage(v); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {SUPPORTED_LANGUAGES.map((l) => (
