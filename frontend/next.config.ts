@@ -4,6 +4,11 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Allow all hosts — required for Replit's proxied preview iframe
   allowedDevOrigins: ["*"],
+  experimental: {
+    // TypeScript 7 removed the compiler API Next.js uses; this flag uses
+    // the TS CLI directly instead. Can be removed once Next.js 16 catches up.
+    useTypeScriptCli: true,
+  },
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
