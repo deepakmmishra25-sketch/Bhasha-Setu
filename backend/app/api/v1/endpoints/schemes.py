@@ -6,6 +6,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import get_current_active_user
+from app.core.cache import cache
 from app.core.config import settings
 from app.db.database import get_db
 from app.models.scheme import Scheme
@@ -28,6 +29,13 @@ async def list_schemes(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_active_user),
 ):
+    # Cache unfiltered first-page results (most common call)
+    cache_key = f"schemes:list:{category or 'all'}:{skip}:{limit}" if not q else None
+    if cache_key:
+        cached = await cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     query = select(Scheme).where(Scheme.is_active == True)  # noqa
     if category:
         query = query.where(Scheme.category == category)
@@ -42,7 +50,7 @@ async def list_schemes(
     query = query.offset(skip).limit(limit)
     result = await db.execute(query)
     schemes = result.scalars().all()
-    return [
+    data = [
         {
             "id": s.id,
             "name": s.name,
@@ -57,6 +65,9 @@ async def list_schemes(
         }
         for s in schemes
     ]
+    if cache_key:
+        await cache.set(cache_key, data, ttl=600)  # 10 min — schemes rarely change
+    return data
 
 
 @router.get("/{scheme_id}")

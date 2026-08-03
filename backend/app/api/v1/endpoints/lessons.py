@@ -1,10 +1,11 @@
-"""Lesson and category endpoints — with analytics + notification triggers."""
+"""Lesson and category endpoints — with analytics + notification triggers + caching."""
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.v1.dependencies import get_current_active_user
+from app.core.cache import cache
 from app.db.database import get_db
 from app.models.analytics import UsageEvent
 from app.models.lesson import Category, Lesson, LessonProgress
@@ -15,9 +16,15 @@ router = APIRouter(prefix="/lessons", tags=["lessons"])
 
 @router.get("/categories")
 async def list_categories(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_active_user)):
+    cached = await cache.get("lessons:categories")
+    if cached is not None:
+        return cached
+
     result = await db.execute(select(Category).order_by(Category.sort_order))
     cats = result.scalars().all()
-    return [{"id": c.id, "slug": c.slug, "name": c.name, "nameHindi": c.name_hindi, "icon": c.icon, "color": c.color} for c in cats]
+    data = [{"id": c.id, "slug": c.slug, "name": c.name, "nameHindi": c.name_hindi, "icon": c.icon, "color": c.color} for c in cats]
+    await cache.set("lessons:categories", data, ttl=3600)  # 1 hour
+    return data
 
 
 @router.get("")
@@ -102,45 +109,52 @@ async def get_lesson(
 
 
 @router.post("/{lesson_id}/complete")
-async def mark_complete(
+async def complete_lesson(
     lesson_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
     from datetime import datetime, timezone
     from fastapi import HTTPException
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
 
-    lesson_result = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
-    lesson = lesson_result.scalar_one_or_none()
-    if not lesson:
+    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id, Lesson.is_published == True))  # noqa
+    if not result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Lesson not found")
 
-    result = await db.execute(
-        select(LessonProgress).where(
-            LessonProgress.user_id == current_user.id,
-            LessonProgress.lesson_id == lesson_id,
-        )
+    # Upsert progress record
+    stmt = pg_insert(LessonProgress).values(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        completed=True,
+        completed_at=datetime.now(timezone.utc),
+    ).on_conflict_do_update(
+        index_elements=["user_id", "lesson_id"],
+        set_={"completed": True, "completed_at": datetime.now(timezone.utc)},
     )
-    progress = result.scalar_one_or_none()
-    already_completed = progress and progress.completed
+    await db.execute(stmt)
 
-    if not progress:
-        progress = LessonProgress(user_id=current_user.id, lesson_id=lesson_id)
-        db.add(progress)
-    progress.completed = True
-    progress.completed_at = datetime.now(timezone.utc)
-
-    # Track analytics
+    # Track event
     event = UsageEvent(user_id=current_user.id, event_type="lesson_complete", feature="lessons", language=current_user.language)
     db.add(event)
 
-    # Notify on first completion of this lesson
-    if not already_completed:
-        from app.services.notification_service import notify_lesson_complete
-        await notify_lesson_complete(db, current_user.id, lesson.title, current_user.language or "English")
+    # First completion notification
+    from app.services.notification_service import notify_lesson_complete
+    count_q = await db.execute(
+        select(LessonProgress).where(
+            LessonProgress.user_id == current_user.id,
+            LessonProgress.completed == True,  # noqa
+        )
+    )
+    completed_count = len(count_q.scalars().all())
+    # Fetch lesson title for the notification
+    lesson_obj = await db.execute(select(Lesson).where(Lesson.id == lesson_id))
+    lesson_row = lesson_obj.scalar_one_or_none()
+    lesson_title = lesson_row.title if lesson_row else f"Lesson #{lesson_id}"
+    await notify_lesson_complete(db, current_user.id, lesson_title, current_user.language or "English")
 
     await db.commit()
-    return {"message": "Lesson marked as complete"}
+    return {"completed": True, "lessonId": lesson_id}
 
 
 @router.post("/{lesson_id}/bookmark")
@@ -149,16 +163,30 @@ async def toggle_bookmark(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    result = await db.execute(
+    from fastapi import HTTPException
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
+    result = await db.execute(select(Lesson).where(Lesson.id == lesson_id, Lesson.is_published == True))  # noqa
+    if not result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Lesson not found")
+
+    existing = await db.execute(
         select(LessonProgress).where(
             LessonProgress.user_id == current_user.id,
             LessonProgress.lesson_id == lesson_id,
         )
     )
-    progress = result.scalar_one_or_none()
-    if not progress:
-        progress = LessonProgress(user_id=current_user.id, lesson_id=lesson_id)
-        db.add(progress)
-    progress.bookmarked = not progress.bookmarked
+    prog = existing.scalar_one_or_none()
+    new_state = not prog.bookmarked if prog else True
+
+    stmt = pg_insert(LessonProgress).values(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        bookmarked=new_state,
+    ).on_conflict_do_update(
+        index_elements=["user_id", "lesson_id"],
+        set_={"bookmarked": new_state},
+    )
+    await db.execute(stmt)
     await db.commit()
-    return {"bookmarked": progress.bookmarked}
+    return {"bookmarked": new_state, "lessonId": lesson_id}
