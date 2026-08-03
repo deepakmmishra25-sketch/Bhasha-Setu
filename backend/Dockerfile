@@ -40,14 +40,6 @@ COPY --from=deps /usr/bin/tesseract /usr/bin/tesseract
 COPY --from=deps /usr/share/tesseract-ocr /usr/share/tesseract-ocr
 # System libs needed at runtime
 COPY --from=deps /usr/lib/x86_64-linux-gnu/libpq.so* /usr/lib/x86_64-linux-gnu/
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libgssapi_krb5.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libk5crypto.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libkrb5.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libkrb5support.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libcom_err.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libldap* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libssl.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
-COPY --from=deps /usr/lib/x86_64-linux-gnu/libcrypto.so* /usr/lib/x86_64-linux-gnu/ 2>/dev/null || true
 
 COPY . .
 

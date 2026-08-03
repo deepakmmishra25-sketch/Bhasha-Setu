@@ -34,7 +34,6 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Only copy what Next.js needs to run
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 
