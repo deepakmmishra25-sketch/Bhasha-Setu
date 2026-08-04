@@ -1,0 +1,119 @@
+Act as a Principal Software Architect, Senior Full Stack Engineer, DevOps Engineer, QA Engineer, and Security Auditor.
+
+You are NOT allowed to make assumptions.
+
+Your first task is NOT to write new features.
+
+Your first task is to perform a COMPLETE ROOT CAUSE ANALYSIS of the entire codebase and deployment.
+
+The application is already deployed but almost nothing works correctly.
+
+Known issues include:
+- Login fails
+- Signup may fail
+- Buttons do not work
+- Navigation may not work
+- API requests may fail
+- AI features may not work
+- Some pages are loading but functionality is broken
+
+I want you to inspect EVERYTHING.
+
+Check:
+
+1. Project structure
+2. Frontend architecture
+3. Backend architecture
+4. Routing
+5. API endpoints
+6. Authentication
+7. Database connection
+8. ORM configuration
+9. Environment variables
+10. Build configuration
+11. Deployment configuration
+12. Replit deployment configuration
+13. Production vs Development differences
+14. CORS
+15. Session handling
+16. JWT
+17. Cookies
+18. API base URLs
+19. React errors
+20. Console errors
+21. TypeScript errors
+22. Runtime errors
+23. Missing imports
+24. Missing dependencies
+25. Build logs
+26. Server logs
+27. Network failures
+28. Database schema
+29. Seed data
+30. Authentication middleware
+31. API error handling
+32. Environment variable loading
+33. Vite configuration
+34. Express server configuration
+35. Static file serving
+36. Reverse proxy issues
+37. Deployment logs
+38. Browser console
+39. Failed fetch requests
+40. Every button and page.
+
+For every issue found provide:
+
+- File name
+- Function name
+- Exact line number
+- Root cause
+- Why it happens
+- Severity
+- Recommended fix
+
+Do NOT stop after finding one bug.
+
+Continue until the ENTIRE application is verified.
+
+At the end generate a report with:
+
+CRITICAL
+HIGH
+MEDIUM
+LOW
+
+Then create a prioritized implementation plan.
+
+Do NOT rewrite the project.
+
+Do NOT change architecture unless necessary.
+
+Fix one issue at a time.
+
+After every fix:
+- rebuild
+- typecheck
+- run
+- verify
+
+Never introduce breaking changes.
+
+Only finish when the application is production ready.
+
+If you find deployment problems, compare local development with production deployment and explain every mismatch.
+
+Finally provide a percentage health score for:
+
+Frontend
+Backend
+Authentication
+Database
+Deployment
+Security
+Performance
+Overall Project
+
+Do not hide any issue.
+Do not skip any file.
+Inspect the entire repository.
